@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "chapter1", "chapter1\chapte
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestPalette", "TestPalette\TestPalette.vcxproj", "{1493619E-03E7-4C81-B69F-E27EC41763E7}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestBitmap", "TestBitmap\TestBitmap.vcxproj", "{277422F4-9012-449B-BE5F-46BDD7ADA1A0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -21,6 +23,10 @@ Global
 		{1493619E-03E7-4C81-B69F-E27EC41763E7}.Debug|Win32.Build.0 = Debug|Win32
 		{1493619E-03E7-4C81-B69F-E27EC41763E7}.Release|Win32.ActiveCfg = Release|Win32
 		{1493619E-03E7-4C81-B69F-E27EC41763E7}.Release|Win32.Build.0 = Release|Win32
+		{277422F4-9012-449B-BE5F-46BDD7ADA1A0}.Debug|Win32.ActiveCfg = Debug|Win32
+		{277422F4-9012-449B-BE5F-46BDD7ADA1A0}.Debug|Win32.Build.0 = Debug|Win32
+		{277422F4-9012-449B-BE5F-46BDD7ADA1A0}.Release|Win32.ActiveCfg = Release|Win32
+		{277422F4-9012-449B-BE5F-46BDD7ADA1A0}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -38,7 +38,7 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	static HBRUSH s_hBitmapBrush;//位图画刷
 	static bool isReturnBrush = false;
 	static bool needAlphaBlend = false;
-	static bool isLayered = false;
+	static bool isLayered = true;
 
 	switch (message)
 	{
@@ -58,9 +58,9 @@ BOOL CALLBACK DlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 			// 注意是设置GWL_EXSTYLE而不是GWL_STYLE
 			SetWindowLong(hDlg, GWL_EXSTYLE, GetWindowLong(hDlg, GWL_STYLE) | WS_EX_LAYERED);
-			// 设置透明度 0 - completely transparent 255 - opaque，可设置半透明，同样不管是否alphablend
+			// 设置透明度 0 - completely transparent 255 - opaque，可设置半透明
 			SetLayeredWindowAttributes(hDlg, 0, INIT_ALPHA, LWA_ALPHA);
-			// 设置透明底色,alpha值为0（颜色全为0）的变成全透明，其他颜色不透明，不管是不是用alphablend
+			// 设置透明底色,颜色为指定色的像素变成全透明，其他颜色不透明
 			//SetLayeredWindowAttributes(hDlg, RGB(0 , 0 , 0), 0, LWA_COLORKEY);
 
 			// 设置滑块条变化范围
