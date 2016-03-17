@@ -19,6 +19,7 @@ BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 void ShowError(DWORD dwErrNo);
+HBITMAP LoadBitmapFromCreateBitmap();
 
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -138,8 +139,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_CREATE:
 		//The LoadBitmap function loads the specified bitmap resource from a module's executable file.
-		hBitmap = ::LoadBitmap(hInst, MAKEINTRESOURCE(IDB_BITMAP1));
+		//hBitmap = ::LoadBitmap(hInst, MAKEINTRESOURCE(IDB_BITMAP1));
 		//hBitmap = (HBITMAP)LoadImage(NULL, L"test1.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
+		//hBitmap = (HBITMAP)LoadImage(NULL, L"test16.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_LOADMAP3DCOLORS  /*LR_LOADTRANSPARENT*/);
+		hBitmap = LoadBitmapFromCreateBitmap();
 		if (!hBitmap)
 		{
 			DWORD d = GetLastError(); 
@@ -175,6 +178,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		HBITMAP hOldBitmap = (HBITMAP)::SelectObject(hdc, hTempBitmap);
 		::SelectObject(memDC, hBitmap);
 		::BitBlt(hdc, 0, 0, width, height, memDC, 0, 0, SRCCOPY);
+		//SetStretchBltMode(hdc, BLACKONWHITE);
+		//StretchBlt(hdc, 0, 0, width, height, memDC, 0, 0, 1, 1, SRCCOPY);
 		::SelectObject(hdc, hOldBitmap);
 		::DeleteObject(hTempBitmap);
 		EndPaint(hWnd, &ps);
@@ -182,9 +187,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		break;
 	case WM_CLOSE:
-		
 		::DeleteObject(hBitmap);
 		::DeleteDC(memDC);
+		DestroyWindow(hWnd);
 		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
@@ -244,4 +249,34 @@ void ShowError(DWORD dwErrNo)
 	LocalFree(lpMsgBuf);
 	LocalFree(lpDisplayBuf);
 	//    ExitProcess(dwErrNo);
+}
+
+HBITMAP LoadBitmapFromCreateBitmap()
+{
+	int width =  256;
+	int height = 256;
+	int bitPerPixel = 1;
+	LPBYTE pData = new BYTE[width * height];
+	for (int i = 0; i <  width * height / 8; i++)
+	{
+		pData[i] = 0xaa;
+	}
+// 	int bitPerPixel = 32;
+// 	LPBYTE pData = new BYTE[width * height * 4];
+// 	for (int i = 0; i < width * height; i++)
+// 	{
+// 		pData[i * 4] = i % 12;
+// 		pData[i * 4 + 1] = (i + 34) % 256;
+// 		pData[i * 4 + 2] = (i + 125) % 256;
+// 	}
+// 	int bitPerPixel = 24;
+// 	LPBYTE pData = new BYTE[width * height * 3];
+// 	for (int i = 0; i < width * height; i++)
+// 	{
+// 		pData[i * 3] = 0xaa;
+// 		pData[i * 3 + 1] = 0xaa;
+// 		pData[i * 3 + 2] = 0xaa;
+// 	}
+
+	return CreateBitmap(width, height, 1, bitPerPixel, pData);
 }
