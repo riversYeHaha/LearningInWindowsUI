@@ -133,34 +133,38 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	PAINTSTRUCT ps;
 	HDC hdc;
 	static HBITMAP s_hBitmap;
-	static HDC memDC, tempMemDC;
-	static HBITMAP hDeskTempBitmap, hDeskOldBitmap;
+	static HDC memDC;
 	static HDC hDeskDC;
+	static bool copyDeskTop = true; 
 
 	switch (message)
 	{
 	case WM_CREATE:
-		//The LoadBitmap function loads the specified bitmap resource from a module's executable file.
-		//s_hBitmap = ::LoadBitmap(hInst, MAKEINTRESOURCE(IDB_BITMAP1));
-		s_hBitmap = (HBITMAP)LoadImage(NULL, L"test1.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
-		//s_hBitmap = (HBITMAP)LoadImage(NULL, L"test16.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_LOADMAP3DCOLORS  /*LR_LOADTRANSPARENT*/);
-		//s_hBitmap = LoadBitmapFromCreateBitmap();
-		if (!s_hBitmap)
+		if (copyDeskTop)
 		{
-			DWORD d = GetLastError(); 
-			ShowError(d);
-			PostQuitMessage(0);
-		}
-
-		/*{
 			int width = GetSystemMetrics(SM_CXSCREEN);
 			int height = GetSystemMetrics(SM_CYSCREEN);
 			hDeskDC = GetDC(::GetDesktopWindow());
-			tempMemDC = CreateCompatibleDC(hDeskDC);
-			hDeskTempBitmap = CreateCompatibleBitmap(hDeskDC, width, height);
-			hDeskOldBitmap = (HBITMAP)::SelectObject(tempMemDC, hDeskTempBitmap);
-			::BitBlt(tempMemDC, 0, 0, width, height, hDeskDC, 0, 0, SRCCOPY);
-		}*/
+			memDC = CreateCompatibleDC(hDeskDC);
+			s_hBitmap = CreateCompatibleBitmap(hDeskDC, width, height);
+			HBITMAP hOldBitmap = (HBITMAP)::SelectObject(memDC, s_hBitmap);
+			::BitBlt(memDC, 0, 0, width, height, hDeskDC, 0, 0, SRCCOPY);
+			SelectObject(memDC, hOldBitmap);
+		}
+		else
+		{
+			//The LoadBitmap function loads the specified bitmap resource from a module's executable file.
+			//s_hBitmap = ::LoadBitmap(hInst, MAKEINTRESOURCE(IDB_BITMAP1));
+			//s_hBitmap = (HBITMAP)LoadImage(NULL, L"test1.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
+			s_hBitmap = (HBITMAP)LoadImage(NULL, L"test16.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_LOADMAP3DCOLORS  /*LR_LOADTRANSPARENT*/);
+			//s_hBitmap = LoadBitmapFromCreateBitmap();
+			if (!s_hBitmap)
+			{
+				DWORD d = GetLastError(); 
+				ShowError(d);
+				PostQuitMessage(0);
+			}
+		}
 			
 		break;
 	case WM_COMMAND:
@@ -185,29 +189,39 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		// TODO:  在此添加任意绘图代码...
 		int width = ps.rcPaint.right - ps.rcPaint.left;
 		int height = ps.rcPaint.bottom - ps.rcPaint.top;
-		/*memDC = CreateCompatibleDC(hdc);
-		HBITMAP hBitmap = CreateCompatibleBitmap(hdc, width, height);
-		HBITMAP hOldBitmap = (HBITMAP)::SelectObject(memDC, hBitmap);
-		::BitBlt(memDC, 0, 0, width, height, tempMemDC, 0, 0, SRCCOPY);*/
 
-		memDC = CreateCompatibleDC(hdc);
+		if (memDC == NULL)
+			memDC = CreateCompatibleDC(hdc);
+
 		HBITMAP hOldBitmap = (HBITMAP)::SelectObject(memDC, s_hBitmap);
 		::BitBlt(hdc, 0, 0, width, height, memDC, 0, 0, SRCCOPY);
 		//SetStretchBltMode(hdc, BLACKONWHITE);
 		//StretchBlt(hdc, 0, 0, width, height, memDC, 0, 0, 1, 1, SRCCOPY);
 		::SelectObject(memDC, hOldBitmap);
-		//::DeleteObject(hBitmap);
+
 		EndPaint(hWnd, &ps);
 	}
 
 		break;
 	case WM_CLOSE:
-		//::SelectObject(tempMemDC, hDeskOldBitmap);
-		//::DeleteObject(hDeskTempBitmap);
-		//::DeleteDC(tempMemDC);
-		::DeleteObject(s_hBitmap);
-		::DeleteDC(memDC);
-		::ReleaseDC(hWnd, hDeskDC);
+		if (s_hBitmap)
+		{
+			::DeleteObject(s_hBitmap);
+			s_hBitmap = NULL;
+		}
+		
+		if (memDC)
+		{
+			::DeleteDC(memDC);
+			memDC = NULL;
+		}
+		
+		if (hDeskDC)
+		{
+			::ReleaseDC(hWnd, hDeskDC);
+			hDeskDC = NULL;
+		}		
+
 		DestroyWindow(hWnd);
 		break;
 	case WM_DESTROY:
