@@ -233,9 +233,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		// TODO:  在此添加任意绘图代码...
 		int width = ps.rcPaint.right - ps.rcPaint.left;
 		int height = ps.rcPaint.bottom - ps.rcPaint.top;
-		int bpp = GetDeviceCaps(hdc, BITSPIXEL);
-		int planes = GetDeviceCaps(hdc, PLANES);
-		bpp = GetDeviceCaps(GetDC(NULL), BITSPIXEL);
 
 		if (memDC == NULL)
 			memDC = CreateCompatibleDC(hdc);
@@ -344,59 +341,75 @@ void ShowError(DWORD dwErrNo)
 HBITMAP LoadBitmapFromCreateBitmap()
 {
 	//如果显示器不支持显卡所设置的输出模式，则会显示器无法显示图像
+	//bitPerPixel和planes这两个参数不是指定的值位图会创建失败
+	//而这两个参数与当前显示卡设置不匹配，位图能创建成功，但显示不了图像
 	int width =  256;
 	int height = 256;
- 	int bitPerPixel = 1;
-	int planes = 1;
+	int bitPerPixel = GetDeviceCaps(GetDC(NULL), BITSPIXEL);
+	int planes = GetDeviceCaps(GetDC(NULL), PLANES);
+	LPBYTE pData = nullptr;
 
-	//各种显卡模式下都能显示
+	//单色图，各种显卡模式下都能显示,bitPerPixel和planes都必须是1
+// 	bitPerPixel = planes = 1;
 // 	LPBYTE pData = new BYTE[width * height / 8];
 // 	for (int i = 0; i <  width * height / 8; i++)
 // 	{
 // 		pData[i] = 0xaa;
 // 	}
-	//没有测试环境，显示不了16色
-// 	bitPerPixel = 1;
-// 	planes = 4;
-// 	LPBYTE pData = new BYTE[width * height / 2];
-// 	for (int i = 0; i < width * height / 2; i++)
-// 	{
-// 		pData[i] = 0x1 << 8 | 0x1 << 4 | 0x1 << 2;
-// 	}
-	//将显卡设置为256色模式才有效果
-// 	bitPerPixel = 8;
-// 	planes = 1;
-// 	LPBYTE pData = new BYTE[width * height];
-// 	for (int i = 0; i < width * height; i++)
-// 	{
-// 		pData[i] = i % 256;
-// 	}
-	//将显卡设为16位色才会显示
-// 	bitPerPixel = 16;
-// 	DWORD* pData = new DWORD[width * height / 2];
-// 	for (int i = 0; i < width * height / 2; i++)
-// 	{
-// 		DWORD d = (i % 32 << 11) | ((i * i) % 32 << 6) | (i * i * i) % 32;
-// 		pData[i] = d;
-// 	}
-	//将显卡设置为32位色才会显示
-	bitPerPixel = 32;
-	LPBYTE pData = new BYTE[width * height * 4];
-	for (int i = 0; i < width * height; i++)
+	//测试24位色
+//	bitPerPixel = 24;
+	//16色有4个颜色面，详见《windows程序设计》的介绍
+	if (bitPerPixel == 1 && planes == 4)
 	{
-		pData[i * 4] = i % 12;
-		pData[i * 4 + 1] = (i + 34) % 256;
-		pData[i * 4 + 2] = (i + 125) % 256;
+		//没有测试环境，显示不了16色
+		pData = new BYTE[width * height / 2];
+		for (int i = 0; i < width * height / 2; i++)
+		{
+			pData[i] = 0x1 << 8 | 0x1 << 4 | 0x1 << 2;
+		}
 	}
-	//没有测试环境显示不了24位色
-// 	bitPerPixel = 24;
-// 	LPBYTE pData = new BYTE[width * height * 3];
-// 	for (int i = 0; i < width * height; i++)
-// 	{
-// 		pData[i * 3] = i % 12;
-// 		pData[i * 3 + 1] = (i + 34) % 256;
-// 		pData[i * 3 + 2] = (i + 125) % 256;
-// 	}
+	else if (bitPerPixel == 8 && planes == 1)
+	{
+		//将显卡设置为256色模式才有效果
+		pData = new BYTE[width * height];
+		for (int i = 0; i < width * height; i++)
+		{
+			pData[i] = i % 256;
+		}
+	}
+	else if (bitPerPixel == 16 && planes == 1)
+	{
+		//将显卡设为16位色才会显示
+		DWORD* pData = new DWORD[width * height / 2];
+		for (int i = 0; i < width * height / 2; i++)
+		{
+			DWORD d = (i % 32 << 11) | ((i * i) % 32 << 6) | (i * i * i) % 32;
+			pData[i] = d;
+		}
+		return CreateBitmap(width, height, planes, bitPerPixel, pData);
+	}
+	else if (bitPerPixel == 32 && planes == 1)
+	{
+		//将显卡设置为32位色才会显示
+		pData = new BYTE[width * height * 4];
+		for (int i = 0; i < width * height; i++)
+		{
+			pData[i * 4] = i % 12;
+			pData[i * 4 + 1] = (i + 34) % 256;
+			pData[i * 4 + 2] = (i + 125) % 256;
+		}
+	}
+	else if (bitPerPixel == 24 && planes == 1)
+	{
+		//没有测试环境显示不了24位色
+		pData = new BYTE[width * height * 3];
+		for (int i = 0; i < width * height; i++)
+		{
+			pData[i * 3] = i % 12;
+			pData[i * 3 + 1] = (i + 34) % 256;
+			pData[i * 3 + 2] = (i + 125) % 256;
+		}
+	}
 
 	return CreateBitmap(width, height, planes, bitPerPixel, pData);
 }
