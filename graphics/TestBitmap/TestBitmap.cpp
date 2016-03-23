@@ -380,10 +380,14 @@ HBITMAP LoadBitmapFromCreateBitmap()
 	else if (bitPerPixel == 16 && planes == 1)
 	{
 		//将显卡设为16位色才会显示
-		DWORD* pData = new DWORD[width * height / 2];
-		for (int i = 0; i < width * height / 2; i++)
+		DWORD* pData = new DWORD[width * height];
+		for (int i = 0; i < width * height; i++)
 		{
 			DWORD d = (i % 32 << 11) | ((i * i) % 32 << 6) | (i * i * i) % 32;
+			//d = 0xf800;r
+			//d = 0x07e0;g
+			//d = 0x001f;b
+
 			pData[i] = d;
 		}
 		return CreateBitmap(width, height, planes, bitPerPixel, pData);
