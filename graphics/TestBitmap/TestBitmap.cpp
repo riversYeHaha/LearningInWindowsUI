@@ -20,6 +20,10 @@ LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 void ShowError(DWORD dwErrNo);
 HBITMAP LoadBitmapFromCreateBitmap();
+HBITMAP LoadBitmapFromCreateDIBitmap();
+HBITMAP LoadBitmapFromCreateCompatibleBitmap();
+HBITMAP LoadBitmapFromCreateDIBSection();
+HBITMAP LoadBitmapFromSetDIBits();
 
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -133,9 +137,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	PAINTSTRUCT ps;
 	HDC hdc;
 	static HBITMAP s_hBitmap;
+	static BITMAP s_bm;
 	static HDC memDC;
 	static HDC hDeskDC;
-	static bool copyDeskTop = true; 
+	static bool copyDeskTop = false; 
+	static bool isStrench = false;
+	static enum E_BITMAP_FROM
+	{
+		BF_FROM_LOAD_BITMAP = 0,
+		BF_FROM_LOAD_IMAGE,
+		BF_FROM_CREATE_BITMAP,
+		BF_FROM_CREATE_DIB_BITMAP,
+		BF_FROM_CREATE_COMPATIBLE_BITMAP,
+		BF_FROM_CREATE_DIB_SECTION,
+		BF_FROM_SET_DIBITS,
+		BF_FROM_MAX
+	} eBitmapFrom{ BF_FROM_CREATE_BITMAP };
+
 
 	switch (message)
 	{
@@ -152,18 +170,44 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			SelectObject(memDC, hOldBitmap);
 		}
 		else
-		{
-			//The LoadBitmap function loads the specified bitmap resource from a module's executable file.
-			//s_hBitmap = ::LoadBitmap(hInst, MAKEINTRESOURCE(IDB_BITMAP1));
-			//s_hBitmap = (HBITMAP)LoadImage(NULL, L"test1.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
-			s_hBitmap = (HBITMAP)LoadImage(NULL, L"test16.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_LOADMAP3DCOLORS  /*LR_LOADTRANSPARENT*/);
-			//s_hBitmap = LoadBitmapFromCreateBitmap();
-			if (!s_hBitmap)
+		{ 
+			if (BF_FROM_LOAD_BITMAP == eBitmapFrom)
 			{
-				DWORD d = GetLastError(); 
-				ShowError(d);
-				PostQuitMessage(0);
+				//The LoadBitmap function loads the specified bitmap resource from a module's executable file.
+				s_hBitmap = ::LoadBitmap(hInst, MAKEINTRESOURCE(IDB_BITMAP1));
 			}
+			else if (BF_FROM_LOAD_IMAGE == eBitmapFrom)
+			{
+				s_hBitmap = (HBITMAP)LoadImage(NULL, L"test1.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
+				//s_hBitmap = (HBITMAP)LoadImage(NULL, L"test16.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_LOADMAP3DCOLORS  /*LR_LOADTRANSPARENT*/);
+			}
+			else if (BF_FROM_CREATE_BITMAP == eBitmapFrom)
+			{
+				s_hBitmap = LoadBitmapFromCreateBitmap();
+			}
+			else if (BF_FROM_CREATE_DIB_BITMAP == eBitmapFrom)
+			{
+				s_hBitmap = LoadBitmapFromCreateDIBitmap();
+			}
+			else if (BF_FROM_CREATE_COMPATIBLE_BITMAP == eBitmapFrom)
+			{
+				s_hBitmap = LoadBitmapFromCreateCompatibleBitmap();
+			}
+			else if (BF_FROM_CREATE_DIB_SECTION == eBitmapFrom)
+			{
+				s_hBitmap = LoadBitmapFromSetDIBits();
+			}
+			
+		}
+		if (!s_hBitmap)
+		{
+			DWORD d = GetLastError();
+			ShowError(d);
+			PostQuitMessage(0);
+		}
+		else
+		{
+			::GetObject(s_hBitmap, sizeof(s_bm), &s_bm);
 		}
 			
 		break;
@@ -189,14 +233,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		// TODO:  在此添加任意绘图代码...
 		int width = ps.rcPaint.right - ps.rcPaint.left;
 		int height = ps.rcPaint.bottom - ps.rcPaint.top;
+		int bpp = GetDeviceCaps(hdc, BITSPIXEL);
+		int planes = GetDeviceCaps(hdc, PLANES);
+		bpp = GetDeviceCaps(GetDC(NULL), BITSPIXEL);
 
 		if (memDC == NULL)
 			memDC = CreateCompatibleDC(hdc);
 
 		HBITMAP hOldBitmap = (HBITMAP)::SelectObject(memDC, s_hBitmap);
-		::BitBlt(hdc, 0, 0, width, height, memDC, 0, 0, SRCCOPY);
-		//SetStretchBltMode(hdc, BLACKONWHITE);
-		//StretchBlt(hdc, 0, 0, width, height, memDC, 0, 0, 1, 1, SRCCOPY);
+		if (isStrench)
+		{
+
+			SetStretchBltMode(hdc, BLACKONWHITE);
+			//将目标从(x,y)开始的宽高为(width,height)的矩形范围的像素复制到目标区域，如果局域比目标区域大则缩小，小则放大
+			StretchBlt(hdc, 0, 0, width, height, memDC, 0, 0, s_bm.bmWidth, s_bm.bmHeight, SRCCOPY);
+		}
+		else
+		{
+			::BitBlt(hdc, 0, 0, width, height, memDC, 0, 0, SRCCOPY);
+		}
+
 		::SelectObject(memDC, hOldBitmap);
 
 		EndPaint(hWnd, &ps);
@@ -204,6 +260,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		break;
 	case WM_CLOSE:
+
 		if (s_hBitmap)
 		{
 			::DeleteObject(s_hBitmap);
@@ -286,30 +343,112 @@ void ShowError(DWORD dwErrNo)
 
 HBITMAP LoadBitmapFromCreateBitmap()
 {
+	//如果显示器不支持显卡所设置的输出模式，则会显示器无法显示图像
 	int width =  256;
 	int height = 256;
-	int bitPerPixel = 1;
-	LPBYTE pData = new BYTE[width * height];
-	for (int i = 0; i <  width * height / 8; i++)
-	{
-		pData[i] = 0xaa;
-	}
-// 	int bitPerPixel = 32;
-// 	LPBYTE pData = new BYTE[width * height * 4];
+ 	int bitPerPixel = 1;
+	int planes = 1;
+
+	//各种显卡模式下都能显示
+// 	LPBYTE pData = new BYTE[width * height / 8];
+// 	for (int i = 0; i <  width * height / 8; i++)
+// 	{
+// 		pData[i] = 0xaa;
+// 	}
+	//没有测试环境，显示不了16色
+// 	bitPerPixel = 1;
+// 	planes = 4;
+// 	LPBYTE pData = new BYTE[width * height / 2];
+// 	for (int i = 0; i < width * height / 2; i++)
+// 	{
+// 		pData[i] = 0x1 << 8 | 0x1 << 4 | 0x1 << 2;
+// 	}
+	//将显卡设置为256色模式才有效果
+// 	bitPerPixel = 8;
+// 	planes = 1;
+// 	LPBYTE pData = new BYTE[width * height];
 // 	for (int i = 0; i < width * height; i++)
 // 	{
-// 		pData[i * 4] = i % 12;
-// 		pData[i * 4 + 1] = (i + 34) % 256;
-// 		pData[i * 4 + 2] = (i + 125) % 256;
+// 		pData[i] = i % 256;
 // 	}
-// 	int bitPerPixel = 24;
+	//将显卡设为16位色才会显示
+// 	bitPerPixel = 16;
+// 	DWORD* pData = new DWORD[width * height / 2];
+// 	for (int i = 0; i < width * height / 2; i++)
+// 	{
+// 		DWORD d = (i % 32 << 11) | ((i * i) % 32 << 6) | (i * i * i) % 32;
+// 		pData[i] = d;
+// 	}
+	//将显卡设置为32位色才会显示
+	bitPerPixel = 32;
+	LPBYTE pData = new BYTE[width * height * 4];
+	for (int i = 0; i < width * height; i++)
+	{
+		pData[i * 4] = i % 12;
+		pData[i * 4 + 1] = (i + 34) % 256;
+		pData[i * 4 + 2] = (i + 125) % 256;
+	}
+	//没有测试环境显示不了24位色
+// 	bitPerPixel = 24;
 // 	LPBYTE pData = new BYTE[width * height * 3];
 // 	for (int i = 0; i < width * height; i++)
 // 	{
-// 		pData[i * 3] = 0xaa;
-// 		pData[i * 3 + 1] = 0xaa;
-// 		pData[i * 3 + 2] = 0xaa;
+// 		pData[i * 3] = i % 12;
+// 		pData[i * 3 + 1] = (i + 34) % 256;
+// 		pData[i * 3 + 2] = (i + 125) % 256;
 // 	}
 
-	return CreateBitmap(width, height, 1, bitPerPixel, pData);
+	return CreateBitmap(width, height, planes, bitPerPixel, pData);
+}
+
+HBITMAP LoadBitmapFromCreateDIBitmap()
+{
+	int type = 1;//1.读取位图，2.裸像素，3.用调色板创建16位位图
+	HBITMAP hBitmap = NULL;
+	LPCTSTR filePath = _T("test1.bmp");
+	if (1 == type)
+	{
+		HANDLE hf = NULL;
+		BITMAPFILEHEADER* pbmfh;
+		DWORD dwBytesRead;
+		DWORD dwFileSize;
+		DWORD dwFileSizeHigh;
+		BOOL bSuccess;
+		hf = CreateFile(filePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+
+	}
+	else if (2 == type)
+	{
+		BITMAPINFO info;
+		memset(&info, 0, sizeof(BITMAPINFO));
+
+		info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+		info.bmiHeader.biWidth = 128;
+	}
+	else if (3 == type)
+	{
+
+	}
+
+
+	return hBitmap;
+
+}
+
+HBITMAP LoadBitmapFromCreateCompatibleBitmap()
+{
+	HBITMAP hBitmap = NULL;
+	return hBitmap;
+}
+
+HBITMAP LoadBitmapFromCreateDIBSection()
+{
+	HBITMAP hBitmap = NULL;
+	return hBitmap;
+}
+
+HBITMAP LoadBitmapFromSetDIBits()
+{
+	HBITMAP hBitmap = NULL;
+	return hBitmap;
 }
